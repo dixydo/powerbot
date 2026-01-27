@@ -6,6 +6,7 @@ Telegram bot for power monitoring via Tapo Smart Plug.
 
 - [Features](#features)
 - [Requirements](#requirements)
+- [Demo](#demo)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Bot Commands](#bot-commands)
@@ -34,6 +35,10 @@ Telegram bot for power monitoring via Tapo Smart Plug.
 - Git
 - Telegram Bot Token (from [@BotFather](https://t.me/botfather))
 - Tapo Smart Plug with local network access
+
+## Demo
+<img width="2100" height="1600" alt="image" src="https://github.com/user-attachments/assets/fc321319-5af0-470a-bead-a5cf1adf729f" />
+
 
 ## Quick Start
 
