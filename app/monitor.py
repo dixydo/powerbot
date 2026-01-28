@@ -32,6 +32,10 @@ async def monitor_loop(bot):
     else:
         logger.info(f"🚀 Monitoring started on {Config.DEVICE_IP}")
     
+    pending_state: str | None = None
+    pending_count: int = 0
+    pending_first_time: float | None = None
+    
     while True:
         try:
             current_state = await check_plug_status()
@@ -44,26 +48,48 @@ async def monitor_loop(bot):
                 now = time.time()
                 await log_power_event(current_status_str, now)
                 logger.info(f"First event recorded: {current_status_str}")
+                pending_state = None
+                pending_count = 0
             else:
                 last_state_str = last_event.get('status')
                 last_time = last_event.get('timestamp')
                 
                 if current_status_str != last_state_str:
-                    now = time.time()
-                    duration = now - last_time
-                    time_str = format_duration(duration)
-                    
-                    if current_state:
-                        msg = f"✅ **Світло З'ЯВИЛОСЯ!**\n\n🌑 Темрява тривала: `{time_str}`"
+                    if pending_state == current_status_str:
+                        pending_count += 1
+                        logger.info(f"State change pending: {last_state_str} -> {current_status_str} (confirmation {pending_count}/{Config.CONFIRMATION_CHECKS})")
                     else:
-                        msg = f"❌ **Світло ЗНИКЛО!**\n\n💡 Було доступне: `{time_str}`"
+                        pending_state = current_status_str
+                        pending_count = 1
+                        pending_first_time = time.time()
+                        logger.info(f"State change detected: {last_state_str} -> {current_status_str} (confirmation 1/{Config.CONFIRMATION_CHECKS})")
                     
-                    logger.info(f"State changed: {last_state_str} -> {current_status_str}")
-                    
-                    await log_power_event(current_status_str, now)
-                    
-                    from bot import broadcast_message
-                    await broadcast_message(bot, msg)
+                    if pending_count >= Config.CONFIRMATION_CHECKS:
+                        now = pending_first_time if pending_first_time else time.time()
+                        duration = now - last_time
+                        time_str = format_duration(duration)
+                        
+                        if current_state:
+                            msg = f"✅ **Світло З'ЯВИЛОСЯ!**\n\n🌑 Темрява тривала: `{time_str}`"
+                        else:
+                            msg = f"❌ **Світло ЗНИКЛО!**\n\n💡 Було доступне: `{time_str}`"
+                        
+                        logger.info(f"State change confirmed: {last_state_str} -> {current_status_str}")
+                        
+                        await log_power_event(current_status_str, now)
+                        
+                        from bot import broadcast_message
+                        await broadcast_message(bot, msg)
+                        
+                        pending_state = None
+                        pending_count = 0
+                        pending_first_time = None
+                else:
+                    if pending_state is not None:
+                        logger.info(f"State change cancelled: was pending {pending_state}, but current is {current_status_str}")
+                        pending_state = None
+                        pending_count = 0
+                        pending_first_time = None
         
         except asyncio.CancelledError:
             logger.info("Monitoring stopped")

@@ -40,6 +40,7 @@ class Config:
     DEVICE_IP = os.getenv("DEVICE_IP")
     
     CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "30"))
+    CONFIRMATION_CHECKS = int(os.getenv("CONFIRMATION_CHECKS", "2"))
     TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
     TIMEZONE = os.getenv("TIMEZONE", "Europe/Kyiv")
     
