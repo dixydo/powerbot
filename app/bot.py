@@ -9,7 +9,6 @@ from aiogram.filters import Command
 from aiogram.enums import ParseMode
 from config import Config
 from database import add_user, get_active_users, deactivate_user, log_notification, get_last_event, get_power_events
-from monitor import check_plug_status
 
 logger = logging.getLogger(__name__)
 
@@ -41,19 +40,19 @@ def build_main_menu() -> types.ReplyKeyboardMarkup:
     )
 
 async def send_status(message: types.Message) -> None:
-    current_state = await check_plug_status()
     last_event = await get_last_event()
 
     if not last_event:
         await message.answer("⚠️ Немає даних про стан електроенергії", reply_markup=build_main_menu())
         return
 
+    last_state_str = last_event.get('status')
     last_time = last_event.get('timestamp')
     now = time.time()
     duration = now - last_time
     time_str = format_duration(duration)
 
-    if current_state:
+    if last_state_str == "on":
         status_emoji = "✅"
         status_text = "**Світло Є**"
         duration_text = f"💡 Світло доступне вже: `{time_str}`"

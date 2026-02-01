@@ -1,6 +1,7 @@
 from typing import List, Optional
 import logging
 import psycopg
+import pytz
 from psycopg.rows import dict_row
 from config import Config
 
@@ -61,9 +62,11 @@ async def get_last_event() -> Optional[dict]:
                 row = await cur.fetchone()
                 if row:
                     result = dict(row)
+                    # Convert to UTC timestamp for consistent comparison
+                    created_at_utc = result['created_at'].astimezone(pytz.UTC)
                     return {
                         'status': result['state'],
-                        'timestamp': result['created_at'].timestamp()
+                        'timestamp': created_at_utc.timestamp()
                     }
                 return None
     except Exception as e:
