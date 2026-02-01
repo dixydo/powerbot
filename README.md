@@ -30,6 +30,16 @@ Telegram bot for power monitoring via Tapo Smart Plug.
 
 ## Requirements
 
+### Option 1: Docker (Recommended)
+
+- Docker 20.10+
+- Docker Compose 2.0+
+- Git
+- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
+- Tapo Smart Plug with local network access
+
+### Option 2: Manual Installation
+
 - Python 3.11+
 - PostgreSQL 15+
 - Git
@@ -42,14 +52,16 @@ Telegram bot for power monitoring via Tapo Smart Plug.
 
 ## Quick Start
 
-### 1. Clone the repository
+### Option 1: Docker (Recommended) 🐳
+
+#### 1. Clone the repository
 
 ```bash
 git clone https://github.com/dixydo/powerbot.git
 cd powerbot
 ```
 
-### 2. Configure environment variables
+#### 2. Configure environment variables
 
 Create `.env` file based on `.env.example`:
 
@@ -71,14 +83,8 @@ DEVICE_IP=192.168.1.100
 
 # Monitoring Settings
 CHECK_INTERVAL=30
+CONFIRMATION_CHECKS=2
 TIMEZONE=Europe/Kyiv
-
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=powerbot
-DB_USER=powerbot
-DB_PASSWORD=powerbot
 ```
 
 **How to get Bot Token:**
@@ -90,13 +96,103 @@ DB_PASSWORD=powerbot
 1. Find [@userinfobot](https://t.me/userinfobot) in Telegram
 2. Send `/start` and get your ID
 
-### 3. Install dependencies
+#### 3. Start everything with Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+That's it! Docker will:
+- 🗄️ Start PostgreSQL database
+- 🤖 Build and start the bot
+- 📊 Apply migrations automatically
+- 📝 Create logs directory
+
+#### 4. View logs
+
+```bash
+# View bot logs
+docker-compose logs -f bot
+
+# View all logs
+docker-compose logs -f
+
+# View logs from file
+tail -f logs/bot_$(date +%Y-%m-%d).log
+```
+
+#### 5. Other Docker commands
+
+```bash
+# Stop bot
+docker-compose down
+
+# Stop and remove volumes (database data)
+docker-compose down -v
+
+# Restart bot
+docker-compose restart bot
+
+# Rebuild and restart after changes
+docker-compose up -d --build
+
+# View running containers
+docker-compose ps
+```
+
+**Note:** Changes in `requirements.txt` or `Dockerfile` require rebuild with `docker-compose up -d --build`.
+
+---
+
+### Option 2: Manual Installation (venv)
+
+#### 1. Clone the repository
+
+```bash
+git clone https://github.com/dixydo/powerbot.git
+cd powerbot
+```
+
+#### 2. Configure environment variables
+
+Create `.env` file based on `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in your values:
+
+```bash
+# Telegram Bot Configuration
+BOT_TOKEN=your_telegram_bot_token_here
+ADMIN_USER_ID=your_telegram_user_id
+
+# Tapo Device Configuration
+TAPO_EMAIL=your_tapo_email@example.com
+TAPO_PASSWORD=your_tapo_password
+DEVICE_IP=192.168.1.100
+
+# Monitoring Settings
+CHECK_INTERVAL=30
+CONFIRMATION_CHECKS=2
+TIMEZONE=Europe/Kyiv
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=powerbot
+DB_USER=powerbot
+DB_PASSWORD=powerbot
+```
+
+#### 3. Install dependencies
 
 ```bash
 make install
 ```
 
-### 4. Configure PostgreSQL
+#### 4. Configure PostgreSQL
 
 Make sure PostgreSQL is running and accessible on `localhost:5432`.
 
@@ -112,13 +208,13 @@ GRANT ALL ON SCHEMA public TO powerbot;
 
 **Note:** The `\c powerbot` command connects to the database, and `GRANT ALL ON SCHEMA public` grants rights to the public schema, which is required for creating tables.
 
-### 5. Apply migrations
+#### 5. Apply migrations
 
 ```bash
 make migrate
 ```
 
-### 6. Start the bot
+#### 6. Start the bot
 
 **Background mode (recommended):**
 
@@ -218,7 +314,10 @@ power-bot/
 ├── logs/                    # Log files (auto-created)
 ├── .env                     # Environment variables (create from .env.example)
 ├── .env.example             # Environment variables template
+├── .dockerignore            # Docker ignore rules
 ├── .gitignore              # Git ignore rules
+├── docker-compose.yml       # Docker Compose configuration
+├── Dockerfile              # Docker image definition
 ├── requirements.txt         # Python dependencies
 ├── Makefile                # Development commands
 ├── LICENSE                 # MIT License
@@ -369,6 +468,7 @@ make stop
 ### Infrastructure
 
 - **PostgreSQL 15** - relational database
+- **Docker & Docker Compose** - containerization (optional)
 - **Make** - development command automation
 
 ### Architecture

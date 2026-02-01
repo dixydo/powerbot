@@ -4,7 +4,12 @@ Power Bot - Main Application
 """
 import asyncio
 import logging
+import sys
 import warnings
+from pathlib import Path
+
+# Add app directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 
 # Hide pydantic warnings about protected namespaces
 warnings.filterwarnings("ignore", message=".*protected namespace.*")

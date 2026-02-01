@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import psycopg
+
+# Add app directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 
 # Load .env file
 import config  # noqa: F401

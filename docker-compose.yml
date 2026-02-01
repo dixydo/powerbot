@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: powerbot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: powerbot
+      POSTGRES_USER: powerbot
+      POSTGRES_PASSWORD: powerbot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U powerbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    container_name: powerbot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_USER_ID=${ADMIN_USER_ID}
+      - TAPO_EMAIL=${TAPO_EMAIL}
+      - TAPO_PASSWORD=${TAPO_PASSWORD}
+      - DEVICE_IP=${DEVICE_IP}
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-30}
+      - CONFIRMATION_CHECKS=${CONFIRMATION_CHECKS:-2}
+      - TEST_MODE=${TEST_MODE:-false}
+      - TIMEZONE=${TIMEZONE:-Europe/Kyiv}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=powerbot
+      - DB_USER=powerbot
+      - DB_PASSWORD=powerbot
+    volumes:
+      # Mount app directory for development
+      - ./app:/app/app
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        echo 'Running migrations...' &&
+        python -m app.migrate &&
+        echo 'Starting bot...' &&
+        python -m app.main
+      "
+
+volumes:
+  postgres_data:
