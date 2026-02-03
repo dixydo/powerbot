@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+       - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U powerbot"]
       interval: 5s
@@ -44,6 +44,22 @@ services:
       - ./app:/app/app
       # Mount logs directory for persistence
       - ./logs:/app/logs
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    # Add health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; import sys; sys.path.insert(0, '/app/app'); from bot import bot; asyncio.run(bot.get_me())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     command: >
       sh -c "
         echo 'Waiting for database...' &&

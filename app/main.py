@@ -22,10 +22,36 @@ logger = logging.getLogger(__name__)
 async def main():
     logger.info("🚀 Starting Power Bot...")
     
-    bot_task = asyncio.create_task(start_bot())
-    monitor_task = asyncio.create_task(monitor_loop(bot))
-    
-    await asyncio.gather(bot_task, monitor_task)
+    try:
+        bot_task = asyncio.create_task(start_bot())
+        monitor_task = asyncio.create_task(monitor_loop(bot))
+        
+        # Wait for tasks with proper error handling
+        done, pending = await asyncio.wait(
+            [bot_task, monitor_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+        
+        # Cancel pending tasks
+        for task in pending:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+                
+        # Check if any task failed
+        for task in done:
+            if task.exception():
+                logger.error(f"Task failed: {task.exception()}")
+                raise task.exception()
+                
+    except asyncio.CancelledError:
+        logger.info("🛑 Bot stopped")
+        raise
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        raise
 
 if __name__ == "__main__":
     try:

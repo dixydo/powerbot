@@ -14,12 +14,26 @@ async def check_plug_status() -> bool:
         return random.choice([True, False])
     
     client = ApiClient(Config.TAPO_EMAIL, Config.TAPO_PASSWORD)
-    try:
-        device = await asyncio.wait_for(client.p100(Config.DEVICE_IP), timeout=5.0)
-        await asyncio.wait_for(device.get_device_info(), timeout=5.0)
-        return True
-    except Exception:
-        return False
+    max_retries = 3
+    
+    for attempt in range(max_retries):
+        try:
+            device = await asyncio.wait_for(client.p100(Config.DEVICE_IP), timeout=5.0)
+            await asyncio.wait_for(device.get_device_info(), timeout=5.0)
+            return True
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout connecting to device (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(1)
+            continue
+        except Exception as e:
+            logger.warning(f"Error checking device (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(1)
+            continue
+    
+    logger.error("Failed to connect to device after all retries")
+    return False
 
 def format_duration(seconds: float) -> str:
     hours, rem = divmod(int(seconds), 3600)
