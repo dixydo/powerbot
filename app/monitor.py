@@ -13,11 +13,12 @@ async def check_plug_status() -> bool:
         # Test mode: simulate random power state changes
         return random.choice([True, False])
     
-    client = ApiClient(Config.TAPO_EMAIL, Config.TAPO_PASSWORD)
     max_retries = 3
     
     for attempt in range(max_retries):
+        client = None
         try:
+            client = ApiClient(Config.TAPO_EMAIL, Config.TAPO_PASSWORD)
             device = await asyncio.wait_for(client.p100(Config.DEVICE_IP), timeout=5.0)
             await asyncio.wait_for(device.get_device_info(), timeout=5.0)
             return True
@@ -31,6 +32,12 @@ async def check_plug_status() -> bool:
             if attempt < max_retries - 1:
                 await asyncio.sleep(1)
             continue
+        finally:
+            if client:
+                try:
+                    await client.close()
+                except:
+                    pass  # Ignore errors during cleanup
     
     logger.error("Failed to connect to device after all retries")
     return False
@@ -84,7 +91,7 @@ async def monitor_loop(bot):
                         time_str = format_duration(duration)
                         
                         if current_state:
-                            msg = f"✅ **Світло З'ЯВИЛОСЯ!**\n\n🌑 Темрява тривала: `{time_str}`"
+                            msg = f"✅ **Світло З'ЯВИЛОСЯ!**\n\n🌑 Світло було вимкнено: `{time_str}`"
                         else:
                             msg = f"❌ **Світло ЗНИКЛО!**\n\n💡 Було доступне: `{time_str}`"
                         

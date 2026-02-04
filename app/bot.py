@@ -55,7 +55,7 @@ async def send_status(message: types.Message) -> None:
     if last_state_str == "on":
         status_emoji = "✅"
         status_text = "**Світло Є**"
-        duration_text = f"💡 Світло!! доступне вже: `{time_str}`"
+        duration_text = f"💡 Світло доступне вже: `{time_str}`"
     else:
         status_emoji = "❌"
         status_text = "**Світла НЕМАЄ**"

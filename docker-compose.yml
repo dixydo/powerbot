@@ -11,19 +11,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
        - "127.0.0.1:5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U powerbot"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   bot:
     build: .
     container_name: powerbot
-    restart: unless-stopped
+    restart: always
     depends_on:
       postgres:
-        condition: service_healthy
+        condition: service_started
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_USER_ID=${ADMIN_USER_ID}
@@ -48,18 +43,11 @@ services:
     deploy:
       resources:
         limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
           memory: 256M
           cpus: '0.5'
-        reservations:
-          memory: 128M
-          cpus: '0.25'
-    # Add health check
-    healthcheck:
-      test: ["CMD", "python", "-c", "import asyncio; import sys; sys.path.insert(0, '/app/app'); from bot import bot; asyncio.run(bot.get_me())"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     command: >
       sh -c "
         echo 'Waiting for database...' &&
