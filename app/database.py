@@ -94,14 +94,16 @@ async def deactivate_user(user_id: int):
             )
             await conn.commit()
 
-async def log_notification(user_id: int, message: str, status: str):
-    # Log notification via migrations-managed `notifications` table.
-    # The table should be created by migration `003_create_notifications.sql`.
+async def log_activity(action: str, user_id: int = None, details: str = None, recipients_count: int = 0):
+    """Log bot activity"""
     connection_info = get_connection_info()
     async with await psycopg.AsyncConnection.connect(connection_info) as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "INSERT INTO notifications (telegram_user_id, message, status) VALUES (%s, %s, %s)",
-                (user_id, message, status)
+                """
+                INSERT INTO activity_logs (action, user_id, details, recipients_count)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (action, user_id, details, recipients_count)
             )
             await conn.commit()

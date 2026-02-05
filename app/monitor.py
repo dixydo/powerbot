@@ -102,6 +102,10 @@ async def monitor_loop(bot):
                         from bot import broadcast_message
                         await broadcast_message(bot, msg)
                         
+                        # Log power state change notification
+                        from database import log_activity
+                        await log_activity("power_change_notification", details=f"State: {current_status_str}, Duration: {time_str}")
+                        
                         pending_state = None
                         pending_count = 0
                         pending_first_time = None

@@ -8,7 +8,7 @@ from aiogram.exceptions import TelegramForbiddenError
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
 from config import Config
-from database import add_user, get_active_users, deactivate_user, log_notification, get_last_event, get_power_events
+from database import add_user, get_active_users, deactivate_user, log_activity, get_last_event, get_power_events
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,9 @@ def build_main_menu() -> types.ReplyKeyboardMarkup:
 
 async def send_status(message: types.Message) -> None:
     last_event = await get_last_event()
+    
+    # Log status request
+    await log_activity("status_request", message.from_user.id)
 
     if not last_event:
         await message.answer("⚠️ Немає даних про стан електроенергії", reply_markup=build_main_menu())
@@ -68,6 +71,9 @@ async def send_status(message: types.Message) -> None:
     )
 
 async def send_history(message: types.Message) -> None:
+    # Log history request
+    await log_activity("history_request", message.from_user.id)
+    
     events = await get_power_events(limit=250)
     if not events:
         await message.answer("⚠️ Немає історії відключень", reply_markup=build_main_menu())
@@ -124,6 +130,7 @@ async def send_history(message: types.Message) -> None:
 
 async def do_stop(message: types.Message) -> None:
     await deactivate_user(message.chat.id)
+    await log_activity("unsubscribe", message.chat.id)
     await message.answer(
         "👋 Ти відписався від сповіщень.\n"
         "Щоб знову підписатися, використай /start",
@@ -139,6 +146,7 @@ async def cmd_start(message: types.Message):
         first_name=user.first_name,
         last_name=user.last_name
     )
+    await log_activity("subscribe", user.id)
     await message.answer(
         "👋 Привіт! Я бот моніторингу світла.\n\n"
         "Я буду повідомляти тебе про зміни стану електроенергії.\n"
@@ -226,15 +234,14 @@ async def broadcast_message(bot_instance: Bot, text: str):
     for user_id in users:
         try:
             await bot_instance.send_message(user_id, text, parse_mode=ParseMode.MARKDOWN)
-            await log_notification(user_id, text, "sent")
             count += 1
         except TelegramForbiddenError:
             await deactivate_user(user_id)
-            await log_notification(user_id, text, "user_blocked")
         except Exception as e:
-            await log_notification(user_id, text, "failed")
             logger.error(f"Failed to send to {user_id}: {e}")
     
+    # Log notification sent
+    await log_activity("notification_sent", recipients_count=count, details=f"Broadcast: {text[:50]}...")
     logger.info(f"Message sent to {count} users.")
 
 async def start_bot():
