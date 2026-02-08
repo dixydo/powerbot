@@ -32,3 +32,6 @@ env/
 .bot.pid
 logs/
 bot.log
+
+# Docker compose override
+docker-compose.override.yml

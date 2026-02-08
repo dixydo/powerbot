@@ -1,0 +1,14 @@
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+    command: postgres -c shared_buffers=64MB -c max_connections=20
+
+  bot:
+    volumes:
+      - ./app:/app/app
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
