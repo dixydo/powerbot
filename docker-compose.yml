@@ -11,15 +11,23 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
        - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U powerbot" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: postgres -c shared_buffers=64MB -c max_connections=20
 
   bot:
+    init: true
     build: .
     container_name: powerbot
-    restart: always
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_started
     environment:
+      - PYTHONUNBUFFERED=1
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_USER_ID=${ADMIN_USER_ID}
       - TAPO_EMAIL=${TAPO_EMAIL}
@@ -43,9 +51,6 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '1.0'
-        reservations:
           memory: 256M
           cpus: '0.5'
     command: >
