@@ -71,7 +71,6 @@ def setup_logging():
         encoding='utf-8'
     )
     file_handler.setFormatter(formatter)
-    file_handler.suffix = "%Y-%m-%d"
     
     # Console handler
     console_handler = logging.StreamHandler()
