@@ -16,12 +16,16 @@ warnings.filterwarnings("ignore", message=".*protected namespace.*")
 
 from bot import start_bot, bot
 from monitor import monitor_loop
+from database import init_db_pool, close_db_pool
 
 logger = logging.getLogger(__name__)
 
 async def main():
     logger.info("🚀 Starting Power Bot...")
     
+    # Initialize database connection pool
+    await init_db_pool()
+
     try:
         bot_task = asyncio.create_task(start_bot())
         monitor_task = asyncio.create_task(monitor_loop(bot))
@@ -52,6 +56,9 @@ async def main():
     except Exception as e:
         logger.error(f"Fatal error: {e}")
         raise
+    finally:
+        # Always close the database connection pool
+        await close_db_pool()
 
 if __name__ == "__main__":
     try:

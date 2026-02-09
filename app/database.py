@@ -3,16 +3,50 @@ import logging
 import psycopg
 import pytz
 from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 from config import Config
 
 logger = logging.getLogger(__name__)
 
+# Global connection pool
+_pool: Optional[AsyncConnectionPool] = None
+
 def get_connection_info() -> str:
     return f"host={Config.DB_HOST} port={Config.DB_PORT} dbname={Config.DB_NAME} user={Config.DB_USER} password={Config.DB_PASSWORD}"
 
+async def init_db_pool():
+    """Initialize database connection pool"""
+    global _pool
+    if _pool is None:
+        connection_info = get_connection_info()
+        _pool = AsyncConnectionPool(
+            conninfo=connection_info,
+            min_size=2,
+            max_size=10,
+            timeout=30,
+            max_idle=300,
+            max_lifetime=3600,
+        )
+        await _pool.open()
+        logger.info("Database connection pool initialized")
+
+async def close_db_pool():
+    """Close database connection pool"""
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+        logger.info("Database connection pool closed")
+
+def get_pool() -> AsyncConnectionPool:
+    """Get the database connection pool"""
+    if _pool is None:
+        raise RuntimeError("Database pool not initialized. Call init_db_pool() first.")
+    return _pool
+
 async def add_user(user_id: int, username: Optional[str] = None, first_name: Optional[str] = None, last_name: Optional[str] = None):
-    connection_info = get_connection_info()
-    async with await psycopg.AsyncConnection.connect(connection_info) as conn:
+    pool = get_pool()
+    async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
@@ -30,16 +64,16 @@ async def add_user(user_id: int, username: Optional[str] = None, first_name: Opt
             await conn.commit()
 
 async def get_active_users() -> List[int]:
-    connection_info = get_connection_info()
-    async with await psycopg.AsyncConnection.connect(connection_info) as conn:
+    pool = get_pool()
+    async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute("SELECT telegram_user_id FROM users WHERE is_active = TRUE")
             rows = await cur.fetchall()
             return [row[0] for row in rows]
 
 async def log_power_event(status: str, timestamp: float):
-    connection_info = get_connection_info()
-    async with await psycopg.AsyncConnection.connect(connection_info) as conn:
+    pool = get_pool()
+    async with pool.connection() as conn:
         async with conn.cursor() as cur:
             from datetime import datetime
             import pytz
@@ -52,10 +86,10 @@ async def log_power_event(status: str, timestamp: float):
             await conn.commit()
 
 async def get_last_event() -> Optional[dict]:
-    connection_info = get_connection_info()
+    pool = get_pool()
     try:
-        async with await psycopg.AsyncConnection.connect(connection_info, row_factory=dict_row) as conn:
-            async with conn.cursor() as cur:
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(
                     "SELECT state, created_at FROM power_events ORDER BY id DESC LIMIT 1"
                 )
@@ -74,9 +108,9 @@ async def get_last_event() -> Optional[dict]:
         raise
 
 async def get_power_events(limit: int = 100) -> List[dict]:
-    connection_info = get_connection_info()
-    async with await psycopg.AsyncConnection.connect(connection_info, row_factory=dict_row) as conn:
-        async with conn.cursor() as cur:
+    pool = get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor(row_factory=dict_row) as cur:
             await cur.execute(
                 "SELECT state, created_at FROM power_events ORDER BY id DESC LIMIT %s",
                 (limit,)
@@ -85,8 +119,8 @@ async def get_power_events(limit: int = 100) -> List[dict]:
             return [dict(r) for r in rows]
 
 async def deactivate_user(user_id: int):
-    connection_info = get_connection_info()
-    async with await psycopg.AsyncConnection.connect(connection_info) as conn:
+    pool = get_pool()
+    async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 "UPDATE users SET is_active = FALSE WHERE telegram_user_id = %s",
@@ -96,8 +130,8 @@ async def deactivate_user(user_id: int):
 
 async def log_activity(action: str, user_id: int = None, details: str = None, recipients_count: int = 0):
     """Log bot activity"""
-    connection_info = get_connection_info()
-    async with await psycopg.AsyncConnection.connect(connection_info) as conn:
+    pool = get_pool()
+    async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 """

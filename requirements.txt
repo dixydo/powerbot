@@ -1,4 +1,5 @@
 psycopg[binary]
+psycopg-pool
 aiogram==3.24.0
 tapo==0.8.8
 pytz==2025.2
