@@ -19,6 +19,22 @@ import sentry_sdk
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
+
+def sentry_before_send(event, hint):
+    """Filter out expected errors from Sentry"""
+    # Ignore TelegramForbiddenError - user blocked the bot
+    if 'exc_info' in hint and hint['exc_info'][0].__name__ == 'TelegramForbiddenError':
+        return None
+
+    # Ignore log messages about Tapo device connection failures (expected when power is off)
+    if 'log_record' in hint:
+        message = hint['log_record'].getMessage()
+        if 'Failed to connect to device' in message or 'Timeout connecting to device' in message:
+            return None
+
+    return event
+
+
 # Initialize Sentry
 if Config.SENTRY_DSN:
     sentry_sdk.init(
@@ -32,11 +48,7 @@ if Config.SENTRY_DSN:
                 event_level=logging.ERROR  # Send errors and above as events
             ),
         ],
-        # Don't capture TelegramForbiddenError as it's expected behavior
-        before_send=lambda event, hint: None if (
-            'exc_info' in hint and
-            hint['exc_info'][0].__name__ == 'TelegramForbiddenError'
-        ) else event,
+        before_send=sentry_before_send,
     )
     logging.info("Sentry initialized")
 

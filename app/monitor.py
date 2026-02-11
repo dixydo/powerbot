@@ -39,7 +39,8 @@ async def check_plug_status() -> bool:
                 except:
                     pass  # Ignore errors during cleanup
     
-    logger.error("Failed to connect to device after all retries")
+    # This is expected when power is off, so don't log as error
+    logger.info("Failed to connect to device after all retries (likely power is off)")
     return False
 
 def format_duration(seconds: float) -> str:
