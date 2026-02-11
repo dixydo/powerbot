@@ -50,6 +50,11 @@ class Config:
     DB_USER = os.getenv("DB_USER", "powerbot")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "powerbot")
 
+    # Sentry configuration
+    SENTRY_DSN = os.getenv("SENTRY_DSN")
+    SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "production")
+    SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+
 # Logging setup with daily rotation
 def setup_logging():
     repo_root = pathlib.Path(__file__).resolve().parent.parent

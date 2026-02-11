@@ -14,6 +14,32 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Hide pydantic warnings about protected namespaces
 warnings.filterwarnings("ignore", message=".*protected namespace.*")
 
+from config import Config
+import sentry_sdk
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+# Initialize Sentry
+if Config.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=Config.SENTRY_DSN,
+        environment=Config.SENTRY_ENVIRONMENT,
+        traces_sample_rate=Config.SENTRY_TRACES_SAMPLE_RATE,
+        integrations=[
+            AsyncioIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,        # Capture info and above as breadcrumbs
+                event_level=logging.ERROR  # Send errors and above as events
+            ),
+        ],
+        # Don't capture TelegramForbiddenError as it's expected behavior
+        before_send=lambda event, hint: None if (
+            'exc_info' in hint and
+            hint['exc_info'][0].__name__ == 'TelegramForbiddenError'
+        ) else event,
+    )
+    logging.info("Sentry initialized")
+
 from bot import start_bot, bot
 from monitor import monitor_loop
 from database import init_db_pool, close_db_pool
@@ -22,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     logger.info("🚀 Starting Power Bot...")
-    
+
     # Initialize database connection pool
     await init_db_pool()
 

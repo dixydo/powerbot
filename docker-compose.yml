@@ -39,6 +39,7 @@ services:
       - DB_NAME=powerbot
       - DB_USER=powerbot
       - DB_PASSWORD=powerbot
+      - SENTRY_DSN=${SENTRY_DSN}
     volumes:
       - ./logs:/app/logs
     command: >

@@ -26,6 +26,7 @@ async def init_db_pool():
             timeout=30,
             max_idle=300,
             max_lifetime=3600,
+            open=False,  # Don't auto-open in constructor (deprecated behavior)
         )
         await _pool.open()
         logger.info("Database connection pool initialized")

@@ -212,9 +212,24 @@ async def cmd_stop(message: types.Message):
 async def status_button(message: types.Message):
     try:
         await send_status(message)
+    except TelegramForbiddenError:
+        # User blocked the bot - deactivate them silently
+        logger.info(f"User {message.from_user.id} blocked the bot")
+        try:
+            await deactivate_user(message.from_user.id)
+        except Exception as e:
+            logger.error(f"Failed to deactivate user {message.from_user.id}: {e}")
     except Exception as e:
         logger.exception(f"Error in status button: {e}")
-        await message.answer("❌ Помилка при перевірці статусу", reply_markup=build_main_menu())
+        try:
+            await message.answer("❌ Помилка при перевірці статусу", reply_markup=build_main_menu())
+        except TelegramForbiddenError:
+            # User blocked the bot during error handling
+            logger.info(f"User {message.from_user.id} blocked the bot during error handling")
+            try:
+                await deactivate_user(message.from_user.id)
+            except Exception as db_error:
+                logger.error(f"Failed to deactivate user {message.from_user.id}: {db_error}")
 
 @dp.message(F.text == MENU_BTN_HISTORY)
 async def history_button(message: types.Message):
@@ -223,7 +238,10 @@ async def history_button(message: types.Message):
     except TelegramForbiddenError:
         # User blocked the bot - deactivate them silently
         logger.info(f"User {message.from_user.id} blocked the bot")
-        await deactivate_user(message.from_user.id)
+        try:
+            await deactivate_user(message.from_user.id)
+        except Exception as e:
+            logger.error(f"Failed to deactivate user {message.from_user.id}: {e}")
     except Exception as e:
         logger.exception(f"Error in history button: {e}")
         try:
@@ -231,7 +249,10 @@ async def history_button(message: types.Message):
         except TelegramForbiddenError:
             # User blocked the bot during error handling
             logger.info(f"User {message.from_user.id} blocked the bot during error handling")
-            await deactivate_user(message.from_user.id)
+            try:
+                await deactivate_user(message.from_user.id)
+            except Exception as db_error:
+                logger.error(f"Failed to deactivate user {message.from_user.id}: {db_error}")
 
 @dp.message(F.text == MENU_BTN_STOP)
 async def stop_button(message: types.Message):
