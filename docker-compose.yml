@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
       - BOT_TOKEN=${BOT_TOKEN}
@@ -44,12 +44,10 @@ services:
       - ./logs:/app/logs
     command: >
       sh -c "
-        echo 'Waiting for database...' &&
-        sleep 5 &&
         echo 'Running migrations...' &&
         python -m app.migrate &&
         echo 'Starting bot...' &&
-        python -m app.main
+        exec python -m app.main
       "
 
 volumes:
