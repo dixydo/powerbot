@@ -23,12 +23,12 @@ async def check_plug_status() -> bool:
             await asyncio.wait_for(device.get_device_info(), timeout=5.0)
             return True
         except asyncio.TimeoutError:
-            logger.warning(f"Timeout connecting to device (attempt {attempt + 1}/{max_retries})")
+            logger.debug(f"Timeout connecting to device (attempt {attempt + 1}/{max_retries})")
             if attempt < max_retries - 1:
                 await asyncio.sleep(1)
             continue
         except Exception as e:
-            logger.warning(f"Error checking device (attempt {attempt + 1}/{max_retries}): {e}")
+            logger.debug(f"Error checking device (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 await asyncio.sleep(1)
             continue
@@ -39,8 +39,6 @@ async def check_plug_status() -> bool:
                 except:
                     pass  # Ignore errors during cleanup
     
-    # This is expected when power is off, so don't log as error
-    logger.info("Failed to connect to device after all retries (likely power is off)")
     return False
 
 def format_duration(seconds: float) -> str:
@@ -62,8 +60,7 @@ async def monitor_loop(bot):
         try:
             current_state = await check_plug_status()
             current_status_str = "on" if current_state else "off"
-            logger.info(f"Current state: {current_status_str}")
-            
+
             last_event = await get_last_event()
             
             if not last_event:
@@ -79,12 +76,11 @@ async def monitor_loop(bot):
                 if current_status_str != last_state_str:
                     if pending_state == current_status_str:
                         pending_count += 1
-                        logger.info(f"State change pending: {last_state_str} -> {current_status_str} (confirmation {pending_count}/{Config.CONFIRMATION_CHECKS})")
                     else:
                         pending_state = current_status_str
                         pending_count = 1
                         pending_first_time = time.time()
-                        logger.info(f"State change detected: {last_state_str} -> {current_status_str} (confirmation 1/{Config.CONFIRMATION_CHECKS})")
+                        logger.info(f"State change detected: {last_state_str} -> {current_status_str}, waiting for confirmation ({Config.CONFIRMATION_CHECKS} checks)")
                     
                     if pending_count >= Config.CONFIRMATION_CHECKS:
                         now = pending_first_time if pending_first_time else time.time()
