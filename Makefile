@@ -1,7 +1,11 @@
 VENV ?= venv
 PID_FILE ?= .bot.pid
+DB_CONTAINER ?= powerbot-db
+DB_NAME ?= powerbot
+DB_USER ?= powerbot
+DUMP_FILE ?= dump_$(shell date +%Y%m%d_%H%M%S).sql
 
-.PHONY: help venv install migrate start stop status logs
+.PHONY: help venv install migrate start stop status logs db-dump db-restore
 .DEFAULT_GOAL := help
 
 help:
@@ -17,6 +21,10 @@ help:
 	@echo "    make stop          - Stop bot"
 	@echo "    make status        - Check bot status"
 	@echo "    make logs          - View current logs"
+	@echo ""
+	@echo "  Database:"
+	@echo "    make db-dump       - Create DB dump (DUMP_FILE=filename.sql)"
+	@echo "    make db-restore    - Restore DB from dump (DUMP=filename.sql)"
 	@echo ""
 
 # Setup
@@ -85,3 +93,25 @@ logs:
 		echo "Available logs:"; \
 		ls -1 logs/ 2>/dev/null || echo "logs/ folder is empty"; \
 	fi
+
+# Database
+db-dump:
+	@echo "📦 Creating database dump..."
+	@docker exec $(DB_CONTAINER) pg_dump -U $(DB_USER) $(DB_NAME) > $(DUMP_FILE)
+	@echo "✅ Dump saved to: $(DUMP_FILE)"
+
+db-restore:
+	@if [ -z "$(DUMP)" ]; then \
+		echo "❌ Specify dump file: make db-restore DUMP=filename.sql"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(DUMP)" ]; then \
+		echo "❌ File not found: $(DUMP)"; \
+		exit 1; \
+	fi
+	@echo "⚠️  Restoring database from $(DUMP)..."
+	@docker exec -i $(DB_CONTAINER) psql -U $(DB_USER) $(DB_NAME) < $(DUMP)
+	@echo "🔄 Resetting sequences..."
+	@docker exec $(DB_CONTAINER) psql -U $(DB_USER) $(DB_NAME) -c \
+		"SELECT setval(pg_get_serial_sequence('power_events', 'id'), COALESCE(MAX(id), 1)) FROM power_events;" > /dev/null
+	@echo "✅ Database restored from: $(DUMP)"
